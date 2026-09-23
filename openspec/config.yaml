@@ -1,0 +1,58 @@
+# SDD project configuration — initialized by sdd-init (hybrid persistence)
+schema: spec-driven
+
+context: |
+  Project: COLS — "Calls-only" Android launcher for senior users.
+  Detected stack: none. Repo contains only LICENSE and README; no project root
+  (Gradle/Android or otherwise) exists at workspace root or within two levels.
+  Intended platform: Android (per README). Toolchain absent from PATH:
+  java, gradle, kotlin not found; ANDROID_HOME/ANDROID_SDK_ROOT unset.
+  Architecture: not yet established. First change must scaffold the Android
+  project (bootstrap change) before any feature work.
+  Primary product constraint: elderly-user UX (large touch targets, high
+  contrast, simplified navigation, call-centric flows).
+  Style/conventions: none established yet.
+
+strict_tdd: false
+strict_tdd_reason: >-
+  Zero project roots detected and no explicit workspace-level test command
+  exists, so the no-runner fallback applies. TDD intent is noted but Strict
+  TDD stays disabled until a scaffolded project provides a runnable
+  workspace-level test command; re-run sdd-init after scaffolding to resolve it.
+
+testing:
+  projects: [] # no project roots discovered at init time (2026-09-23)
+  workspace_test_command: null
+  notes: >-
+    No test runner, coverage, linter, type checker, or formatter is available
+    yet. Expected candidates once the Android project is scaffolded: JUnit 4/5
+    + Robolectric/Molecule or Compose UI tests (unit), Espresso/UiAutomator
+    (instrumented), Kover or JaCoCo (coverage), ktlint/spotless (lint+format),
+    Gradle wrapper as the workspace-level command. Decision deferred to the
+    bootstrap design phase.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - State explicitly when a change depends on project bootstrap (toolchain/scaffold)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Accessibility for senior users is a testable requirement, not a nice-to-have
+  design:
+    - Document architecture decisions with rationale (ADR style)
+    - Cover toolchain bootstrap (JDK, Android SDK, Gradle wrapper) before app architecture
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow existing code patterns once a codebase exists
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
