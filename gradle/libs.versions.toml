@@ -1,0 +1,35 @@
+# COLS version catalog — single source of toolchain and plugin pins.
+#
+# Critical toolchain set (D2): re-verified as one mutually compatible set on
+# 2026-09-24 against primary sources before the first build:
+#   - AGP 9.2.x: supports max API 37.0, requires Gradle 9.4.1 and JDK 17
+#     (developer.android.com/build/releases/agp-9-2-0-release-notes and
+#     developer.android.com/build/releases/about-agp Gradle table)
+#   - Compose BOM 2026.08.00 = Compose 1.12.0, requires compileSdk 37 and
+#     minimum AGP 9.2.0 (Jetpack Compose August '26 release, Aug 12 2026)
+#   - targetSdk 36 satisfies the Play target-API policy effective 2026-08-31
+# Any incompatible pin must be corrected here, never in a build file.
+
+[versions]
+# --- Critical verified toolchain set (D2) ---
+agp = "9.2.1"              # verified 2026-09-24 vs AGP 9.2 release notes (9.2.1 patch of 9.2.0)
+gradleWrapper = "9.4.1"    # wrapper distributionUrl pin; AGP 9.2 min/default Gradle
+jvm = "17"                 # AGP 9.x required JDK (Temurin 17 installed)
+composeBom = "2026.08.00"  # Compose 1.12.0; requires compileSdk 37 (verified 2026-09-24)
+compileSdk = "37"          # required by Compose 1.12; supported by AGP 9.2 (max API 37.0)
+targetSdk = "36"           # Play target-API policy effective 2026-08-31
+minSdk = "26"              # working decision (telephony headroom; RQ2 product half pending)
+
+# --- Non-critical tool plugins, resolved from the Gradle Plugin Portal at
+# --- implementation (2026-09-24); asserted by the first root build.
+spotless = "8.10.1"        # latest stable, Aug 2026 (plugin portal)
+kover = "0.9.9"            # latest stable, Jul 2026 (plugin portal)
+
+# --- Deferred non-critical libs (JUnit, Robolectric, ktlint, androidx
+# --- core/lifecycle/activity): asserted only after the first `:app` build
+# --- verification; entries are added with the `:app` module slice.
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
