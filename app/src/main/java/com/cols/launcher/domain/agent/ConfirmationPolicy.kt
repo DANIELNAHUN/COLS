@@ -9,7 +9,10 @@ package com.cols.launcher.domain.agent
 interface ConfirmationPolicyContract {
     fun issueFor(action: AgentAction): Confirmation
 
-    fun isValid(confirmation: Confirmation?, action: AgentAction): Boolean
+    fun isValid(
+        confirmation: Confirmation?,
+        action: AgentAction,
+    ): Boolean
 
     /**
      * Single-use enforcement: burns a previously issued token so the same
@@ -19,7 +22,6 @@ interface ConfirmationPolicyContract {
 }
 
 class ConfirmationPolicy : ConfirmationPolicyContract {
-
     private val issuedByAction = mutableMapOf<String, AgentAction>()
 
     override fun issueFor(action: AgentAction): Confirmation {
@@ -28,7 +30,10 @@ class ConfirmationPolicy : ConfirmationPolicyContract {
         return token
     }
 
-    override fun isValid(confirmation: Confirmation?, action: AgentAction): Boolean {
+    override fun isValid(
+        confirmation: Confirmation?,
+        action: AgentAction,
+    ): Boolean {
         // No confirmation at all is structurally invalid — nothing has granted
         // this action.
         if (confirmation == null) return false

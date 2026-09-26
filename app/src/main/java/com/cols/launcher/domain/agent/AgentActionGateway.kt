@@ -6,7 +6,10 @@ package com.cols.launcher.domain.agent
  * convention, so every future agent implementation inherits it.
  */
 interface AgentActionGateway {
-    suspend fun perform(action: AgentAction, confirmation: Confirmation?): ActionExecutionResult
+    suspend fun perform(
+        action: AgentAction,
+        confirmation: Confirmation?,
+    ): ActionExecutionResult
 }
 
 sealed interface ActionExecutionResult {
@@ -14,5 +17,7 @@ sealed interface ActionExecutionResult {
     data object ConfirmationRequired : ActionExecutionResult
 
     /** The action executed successfully; [receipt] describes the outcome. */
-    data class Executed(val receipt: String) : ActionExecutionResult
+    data class Executed(
+        val receipt: String,
+    ) : ActionExecutionResult
 }
