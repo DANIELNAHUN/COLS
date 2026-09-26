@@ -3,33 +3,42 @@ schema: spec-driven
 
 context: |
   Project: COLS — "Calls-only" Android launcher for senior users.
-  Detected stack: none. Repo contains only LICENSE and README; no project root
-  (Gradle/Android or otherwise) exists at workspace root or within two levels.
-  Intended platform: Android (per README). Toolchain absent from PATH:
-  java, gradle, kotlin not found; ANDROID_HOME/ANDROID_SDK_ROOT unset.
-  Architecture: not yet established. First change must scaffold the Android
-  project (bootstrap change) before any feature work.
+  Stack (refreshed 2026-09-26 by sdd-init re-run): Android, single Gradle
+  module `:app` at the workspace root — Kotlin via AGP 9.2.1 built-in KGP,
+  Jetpack Compose + Material 3, compileSdk 37 / targetSdk 36 / minSdk 26,
+  JDK 17, Gradle 9.4.1 via the committed wrapper (the only build entry point).
+  Packages: ui/ (Compose), domain/ (agent seam ports + confirmation rule),
+  data/ (in-memory adapters). Quality gates: Spotless/ktlint, lintDebug,
+  Kover domain >=80% line.
   Primary product constraint: elderly-user UX (large touch targets, high
   contrast, simplified navigation, call-centric flows).
-  Style/conventions: none established yet.
 
-strict_tdd: false
+strict_tdd: true
 strict_tdd_reason: >-
-  Zero project roots detected and no explicit workspace-level test command
-  exists, so the no-runner fallback applies. TDD intent is noted but Strict
-  TDD stays disabled until a scaffolded project provides a runnable
-  workspace-level test command; re-run sdd-init after scaffolding to resolve it.
+  Re-run after the bootstrap-android-launcher scaffold: exactly one in-scope
+  project root (Gradle build at the workspace root) and an explicit
+  workspace-level test command (`./gradlew :app:testDebugUnitTest`) covers it,
+  so the workspace-wide-command gate resolves to Strict TDD enabled.
 
 testing:
-  projects: [] # no project roots discovered at init time (2026-09-23)
-  workspace_test_command: null
+  projects:
+    - path: "."
+      stack: Android (Kotlin + Compose, AGP 9.2.1, Gradle 9.4.1 wrapper, JDK 17)
+      test_command: ./gradlew :app:testDebugUnitTest
+      framework: JUnit4 (+ Robolectric 4.16.1 and Compose test runtime for
+        framework/UI-layer tests; no emulator)
+  workspace_test_command: ./gradlew :app:testDebugUnitTest
+  layers:
+    unit_jvm: ./gradlew :app:testDebugUnitTest # pure JVM domain tests + Robolectric + Compose tests
+    instrumented: deferred to the telephony change (TS-01); no device/emulator in the bootstrap loop
+  coverage: ./gradlew :app:koverVerify # domain package only, >=80% line floor; reports via koverHtmlReport/koverXmlReport
+  lint: ./gradlew :app:lintDebug
+  format_check: ./gradlew spotlessCheck
+  format_apply: ./gradlew spotlessApply
   notes: >-
-    No test runner, coverage, linter, type checker, or formatter is available
-    yet. Expected candidates once the Android project is scaffolded: JUnit 4/5
-    + Robolectric/Molecule or Compose UI tests (unit), Espresso/UiAutomator
-    (instrumented), Kover or JaCoCo (coverage), ktlint/spotless (lint+format),
-    Gradle wrapper as the workspace-level command. Decision deferred to the
-    bootstrap design phase.
+    Detected 2026-09-26 by the sdd-init re-run. The workspace test command is
+    zero-exit-code on a green suite and identifies failing tests by name, so it
+    is CI-suitable (enforced in .github/workflows/ci.yml).
 
 rules:
   proposal:
@@ -48,11 +57,11 @@ rules:
   apply:
     guidelines:
       - Follow existing code patterns once a codebase exists
-    tdd: false
-    test_command: ""
+    tdd: true
+    test_command: "./gradlew :app:testDebugUnitTest"
   verify:
-    test_command: ""
-    build_command: ""
-    coverage_threshold: 0
+    test_command: "./gradlew :app:testDebugUnitTest :app:koverVerify spotlessCheck"
+    build_command: "./gradlew :app:assembleDebug"
+    coverage_threshold: 80
   archive:
     - Warn before merging destructive deltas
