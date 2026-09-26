@@ -21,9 +21,26 @@ Phase 3 (tasks 3.1–3.5) complete — running counts now 31/40 (completed: 31, 
 Phase 4 tasks 4.1–4.3 complete — running counts now 34/40 (completed: 34, pending: 6).
 Task 4.4 (live green run) stays open: pushing `pr5/ci-gate` and opening the PR is the orchestrator's/user's call (interactive pace precedent), and AC4's evidence must come from the real hosted run, not a local simulation.
 
+**Slice 6 update (work unit 6, PR 6 / `pr6/docs-reinit`, on this slice)**:
+Phase 5 tasks 5.1–5.3 complete — running counts now 37/40 (completed: 37, pending: 3).
+Pending: 0.2 (machine-state cmdline-tools install), 4.4 (live PR run), 5.4 (rollback text in the PR description). 4.4 and 5.4 are both blocked on the same remote step: pushing the stacked chain and opening the PRs — not authorized to this executor; the prepared rollback text is below.
+
+## Slice 6 (work unit 6, PR 6 / `pr6/docs-reinit`): Phase 5 docs + re-init + scope-guard
+
+- [x] 5.1 README "Development environment" section (100-line README): wrapper-only entry point up front; JDK 17 (Temurin/winget, `java -version` check, catalog↔CI co-update contract); SDK cmdline-tools + `sdkmanager --licenses` + the exact pinned component set; persistent Windows `ANDROID_HOME` (`[Environment]::SetEnvironmentVariable`) + POSIX variant + "CI provisions its own SDK" note; first-build/test commands in `.\gradlew.bat` and `./gradlew` forms; the four quality-gate commands matching ci.yml steps; toolchain-pins section (catalog as single source, wrapper auto-downloads 9.4.1).
+- [x] 5.2 `sdd-init` re-run reflected in `openspec/config.yaml`: project discovery found exactly one in-scope project root (Gradle at the workspace root) and the explicit workspace-level command covers it → decision gate resolves `strict_tdd: true` (workspace-wide-command rationale recorded in `strict_tdd_reason`); `context` refreshed with the real stack; `testing.projects` carries the `.` entry (stack/command/framework), `workspace_test_command: ./gradlew :app:testDebugUnitTest`, layers/coverage/lint/format commands enumerated, instrumented deferred per TS-01; `rules.apply.tdd: true` + test_command; `rules.verify` commands + `coverage_threshold: 80` (matches the Kover domain floor). `.atl/skill-registry.md` pre-existed from the original init; not rebuilt (out of this task's config-refresh scope).
+- [x] 5.3 Scope-guard audit (AC8): term grep over the full `main..HEAD` text diff (32 tracked text files) — every `okhttp`/`retrofit`/`apiKey`/`Authorization`/`llama`/`gpt`/`openai`/`anthropic`/`onnx`/`tensorflow`/`tflite`/`huggingface` hit is self-referential documentation (the audit's own task text; AgentPort.kt's KDoc stating the absence of those concepts); zero hits in Kotlin sources, build files, or executable artifacts. `https://` only as documented provisioning/install URLs (1 in ci.yml, 2 in README), zero in `app/**` code. Dependency filter `:app:dependencies --configuration debugCompileClasspath` → zero AI/network artifact lines, exit 0.
+- [ ] 5.4 Rollback boundary in the PR description — OPEN, blocked on remote (PR creation). Prepared text below.
+
+### Rollback Boundary (prepared for the PR description — task 5.4)
+
+The bootstrap change is additive except three modified files (`.gitignore`, `README.md`, `openspec/config.yaml`), restorable from `HEAD`:
+- Rollback = delete the generated scaffold/CI files (everything under `app/`, `gradle/`, `gradlew*`, `.github/workflows/ci.yml`, `.editorconfig`) and `git checkout` the three modified files; `git clean -fd` clears untracked build output (`app/build/`, `.gradle/` are gitignored).
+- No data migration exists. JDK/SDK installs live outside the repo and are uninstalled independently of it; the wrapper/catalog make the scaffold reproducible (regeneration is the recovery path, not manual surgery).
+
 ## Cumulative Task State
 
-Total tasks: 40 — completed: 34, pending: 6.
+Total tasks: 40 — completed: 37, pending: 3 (0.2 machine-state cmdline-tools; 4.4 live PR run; 5.4 rollback text in PR description — the latter two share one remote step: push + PR creation, not authorized to this executor).
 
 ### Phase 0: Environment Bootstrap (machine state)
 
@@ -114,6 +131,14 @@ Work unit 4 — "Quality loop: Robolectric framework test + Compose smoke test +
 | Runtime harness command/scenario and exact result | `PlaceholderScreenSmokeTest` launches the REAL `MainActivity` through `createAndroidComposeRule` on Robolectric SDK 35 — a genuine activity-launch + Compose-render path on the JVM with no emulator (title rendered, 48dp touch bounds and semantics label asserted on the live semantics tree). Device/emulator install remains out of bootstrap scope per the app-testing spec (Robolectric IS the JVM integration layer); `:app:koverVerify` additionally compiled and exercised the release variant's test path |
 | Rollback boundary | Revert commit a1cc252 on `pr4/quality-loop`: removes the 2 new test files, the `.editorconfig`, the Kover + `:app`-Spotless blocks from `app/build.gradle.kts`, and the root `kotlinGradle` target tweak; restores the pre-slice formatting of the 11 reformatted source files (formatting-only). No main-source behavior changed; no catalog, manifest, or wrapper file touched. PR 3 (cfbe556), PR 2 (7b59caf), PR 1 (f83a58e) untouched |
 
+Work unit 6 — "Phase 5: README dev-environment docs + sdd-init re-run (strict TDD) + scope-guard audit + YAML line-ending hygiene" (PR 6 / `pr6/docs-reinit` — this slice):
+
+| Evidence | Required value |
+|---|---|
+| Focused test command and exact result | `.\gradlew.bat --no-daemon --console=plain :app:testDebugUnitTest :app:koverVerify spotlessCheck` → `BUILD SUCCESSFUL in 28s`, exit 0 (15 tests / 0 failures; domain koverVerify ≥80%; ktlint clean) — repo proven still green after the README/config/.gitattributes edits. Scope audit: term grep over the full `main..HEAD` text diff → zero code hits (all term matches are self-referential documentation in tasks.md/AgentPort.kt KDoc); `:app:dependencies --configuration debugCompileClasspath` filtered for AI/network artifact groups → zero matching lines, exit 0 |
+| Runtime harness command/scenario and exact result | N/A — no runtime boundary exists for a documentation/config slice: `README.md`, `openspec/config.yaml`, and `.gitattributes` are never executed at runtime; the change's runtime path (unit suite + Kover + Spotless) is unchanged and re-proven green by the focused command above |
+| Rollback boundary | Revert the slice's commits on `pr6/docs-reinit`: `README.md` returns to the 2-line stub, `.gitattributes` loses the one `*.yml` line, `openspec/config.yaml` returns to the pre-re-init state — no other file touched; nothing generated depends on these three files |
+
 ## Mode Resolution
 
 Standard Mode — `openspec/config.yaml` reports `strict_tdd: false`. No threat-matrix RED tests were skipped: the one applicable row (executable integrity) was executed as RED→GREEN per 1.6/1.7. Work unit 2's own hard-gate evidence table is above; `assembleDebug` with no Kotlin sources is the honest upper bound of what that slice could prove. Work unit 3 closed the first real test loop: the task-2.4 RED requirement (explicitly dispatched by the orchestrator) was honored as written-first tests → captured failing run (compile-fail RED) → implementation → green run (AC2 evidence recorded in Phase 2 Slice 3 above). Work unit 4 is verification-tooling work (tests/config only, no production behavior), so its hard-gate table records the focused command, the runtime path (real activity launch on Robolectric), and the rollback boundary above; the AC2 deliberate-break cycle (3.5) is the slice's own RED→GREEN evidence.
@@ -202,6 +227,23 @@ Authored line count ≈ 108 (catalog 35, settings 29, root build 17, gradle.prop
 
 - Work-unit commit: **7b59caf** — `feat(app): scaffold buildable :app module with Compose and launcher-only manifest` on branch `pr2/app-module` (stacked-to-main chain; PR 2 slice). Not pushed; PR creation is the orchestrator's/user's call (interactive pace).
 - SDD artifact updates (`tasks.md` checkboxes 2.1–2.3, 2.12; the slice-2 apply-progress merge) were committed as `docs(openspec)` working-tree edits by that slice per the 858a0e4 precedent.
+
+## Commit Identity (slice 6, work unit 6)
+
+- Work-unit commits on branch `pr6/docs-reinit` (stacked-to-main chain; base = `pr5/ci-gate`), one deliverable scope in three conventional commits:
+  - **e5d60fe** — `docs(readme): add clean-machine development environment guide` (task 5.1; 99 insertions / 1 deletion)
+  - **dbb9e60** — `chore(gitattributes): pin YAML working-tree endings to LF` (slice-5 deferred repo hygiene; +1 line)
+  - **802e4cb** — `chore(sdd): enable strict TDD and refresh workspace testing context` (task 5.2, the sdd-init re-run artifact; 34 insertions / 25 deletions)
+- Authored diff for the slice: 134 insertions / 26 deletions (3 files) — well within the 400-line review budget. No code, comments, tests, or docs were compressed or deleted to fit the budget.
+- Not pushed; PR creation is the orchestrator's/user's call (interactive pace + remote not authorized to this executor). The SDD artifact updates (tasks.md checkboxes 5.1–5.3 + 5.4 blocked note; this apply-progress merge) follow as the `docs(openspec)` commit per the 858a0e4 precedent.
+
+## Files Changed in Slice 6 (work unit 6, PR 6 — commits e5d60fe + dbb9e60 + 802e4cb)
+
+| File | Action | What Was Done |
+|------|--------|---------------|
+| `README.md` | Modified | "Development environment" section (task 5.1): wrapper-only entry, JDK 17, SDK components + licenses, `ANDROID_HOME` (Windows/CI), first-build/test + quality-gate commands, toolchain-pins contract (AC6) |
+| `.gitattributes` | Modified | Added `*.yml text eol=lf` — the slice-5 deferred fix so committed YAML (ci.yml) survives `core.autocrlf=true` clones |
+| `openspec/config.yaml` | Modified | sdd-init re-run (task 5.2): `strict_tdd: true`, refreshed `context`/`testing`, workspace test command set, `rules.apply.tdd: true`, verify commands + `coverage_threshold: 80` (AC9) |
 
 ## Deviations from Design
 
