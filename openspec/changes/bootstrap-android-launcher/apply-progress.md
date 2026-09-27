@@ -4,12 +4,25 @@ Cumulative apply-progress artifact for this change (created per OpenSpec file
 convention; no prior apply-progress existed — a previous apply dispatch was
 cancelled after generating untracked partial files, reconciled in this slice).
 
-**Header reconciliation (this slice)**: the previous version of this file
-claimed "completed: 15" while `tasks.md` and native status report 14 checked
-tasks before this slice. A direct count of the checked-in `tasks.md` at that
-point confirmed 14 (0.1, 0.3–0.6 = 5, plus all nine Phase 1 tasks). The stale
-15 was a bookkeeping error in a cancelled draft, not hidden completed work;
-this slice corrects the running counts to 18/40 after 2.1–2.3 and 2.12.
+**Slice 9 update (CI workflow YAML repair on `gate-verification`, one-byte-scope source change)**:
+hosted Actions run 36291718529 rejected the committed workflow file as
+unreadable YAML. The line-31 step name contained a colon in an unquoted plain
+scalar. Repaired by quoting the step name on branch `gate-verification`;
+counts stay 39/40 and task 4.4 stays OPEN — a hosted PR run with
+per-step statuses is the only acceptable evidence, and it does not exist yet.
+
+## Slice 9 (provider-confirmed CI YAML repair): quote the line-31 step name
+
+- **Provider-confirmed defect (hosted run 36291718529)**: the GitHub-hosted Actions UI reported exactly `Invalid workflow file: .github/workflows/ci.yml#L31` and `You have an error in your yaml syntax on line 31`. The committed line 31 is the step name scalared without quotes while containing a colon: `- name: Assert wrapper executable-bit integrity (threat matrix: wrapper)` — the `(threat matrix:` colon made the plain scalar invalid in the canonical YAML parser Actions uses. Blob provenance: `git show 6ccd392:.github/workflows/ci.yml` (the original authoring commit, task 4.1) reproduces the same unquoted byte sequence, so the error is original to the committed file — not introduced by any later edit or merge.
+- **Repair applied**: line 31 quoted in its entirety — `- name: "Assert wrapper executable-bit integrity (threat matrix: wrapper)"`. This is the single-byte-scope smallest fix that satisfies Actions' YAML parser (a colon requires quoting inside a plain scalar). No other workflow bytes changed: trigger (`on: pull_request`), step commands, action SHAs (`fbc6f39…` checkout, `9c971963…` wrapper-validation, `b6effb0…` setup-java), JDK pin, SDK provisioning, and all four Gradle gate invocations are byte-identical to the prior commit. Gate behavior is unchanged.
+- **Local validation evidence (exact commands/results)**:
+  - `python -m pip install pyyaml` → installed (PyYAML was absent from the environment; unavailable checks are stated honestly rather than skipped silently).
+  - `python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml',encoding='utf-8')); ..."` (full workflow `safe_load`) → parse succeeds; job `gate` resolves to 9 steps; the repaired step name parses to the string `'Assert wrapper executable-bit integrity (threat matrix: wrapper)'` (quoting preserves display text byte-for-byte, so PR check-list step labels are unaffected).
+  - Byte-level check `repr()` on the repaired line: no CR bytes exist anywhere in the file (LF-only preserved; consistent with the `.gitattributes` `*.yml text eol=lf` policy), indentation untouched (6 leading spaces, matching the mocked sequence from the previous authoring state).
+  - `git diff --check` → exit 0, no whitespace/conflict-marker errors.
+  - Parser caveat stated honestly: `safe_load` is a generic YAML 1.1 parser, not GitHub's exact Actions schema validation (e.g., it reads the unquoted `on:` key as boolean `True`, a known generic-parser quirk that Actions does not have). Available local checks cannot fully re-derive the hosted schema gate; the authoritative validation is the next real hosted pull-request run.
+- **4.4 status not changed and must not be marked complete**: even after this commit lands and is pushed, no hosted run has yet produced the required AC4 evidence (a PR check list with explicit pass/fail statuses per step). The current run 36291718529 failed at parse time — it is evidence of the defect, not of a green gate. 4.4 stays `- [ ]` until the parent pushes this commit, a fresh pull-request run actually executes the workflow on the hosted runner, and each step reports an explicit status. Repository task counts remain 39/40 with 4.4 the only pending item.
+- **Rollback boundary**: revert the single `fix(ci)` commit on `gate-verification` — restores ci.yml to its pre-repair byte state and (with the companion `docs(openspec)` commit reverted) restores this file and `tasks.md` to their slice-8 text. No other file, action, or gate behavior is touched.
 
 **Slice 8 update (post-delivery machine-state continuation, artifact-only; commit pending)**:
 task 0.2 closed with verified local cmdline-tools evidence (parent-provided,
