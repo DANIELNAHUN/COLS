@@ -80,6 +80,10 @@ jobs:
           # download page; blank output on failure so a parse error means fail.
           echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  ${RUNNER_TEMP}/cmdline-tools.zip" \
             | (cd / && sha256sum -c -)
+          # unzip does not create intermediate directories: hosted PR run
+          # 36292663587 failed with "cannot create extraction directory"
+          # because $ANDROID_HOME/cmdline-tools did not exist yet.
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
           unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
           yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null
           # Android 37's stable package is minor-versioned (android-37.0); the
