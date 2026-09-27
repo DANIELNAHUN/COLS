@@ -62,19 +62,31 @@ jobs:
       - name: Provision Android SDK in-job (no runner state relied on)
         # sdkmanager is NOT preinstalled on hosted runners: fetch the
         # command-line tools ourselves, then install only the components this
-        # project pins (platform-tools, android-37, build-tools 36.0.0).
+        # project pins (platform-tools, android-37.0, build-tools 36.0.0).
         shell: bash
         env:
           ANDROID_HOME: ${{ runner.temp }}/android-sdk
         run: |
           set -euo pipefail
-          toolsUrl="https://dl.google.com/android/repository/commandlinetools-linux-13114788-update.zip"
+          # The official current Linux commandlinetools archive (published on
+          # developer.android.com/studio?pkg=tools, SHA-256 as published on
+          # that page). The old -13114788-update.zip filename returns HTTP 404
+          # (hosted PR run 36292331819, downloaded with -f so the bogus HTML
+          # was rejected before unzip itself failed).
+          toolsUrl="https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip"
           curl -fsSL -A "COLS-CI" -o "$RUNNER_TEMP/cmdline-tools.zip" "$toolsUrl"
           [ -s "$RUNNER_TEMP/cmdline-tools.zip" ] || { echo '::error::cmdline-tools download failed'; exit 1; }
+          # Integrity check against the SHA-256 published on the same official
+          # download page; blank output on failure so a parse error means fail.
+          echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  ${RUNNER_TEMP}/cmdline-tools.zip" \
+            | (cd / && sha256sum -c -)
           unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
           yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null
+          # Android 37's stable package is minor-versioned (android-37.0); the
+          # literal "platforms;android-37" never existed in the repository
+          # (sdkmanager evidence from hosted run 36292331819).
           "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" \
-            "platform-tools" "platforms;android-37" "build-tools;36.0.0" > /dev/null
+            "platform-tools" "platforms;android-37.0" "build-tools;36.0.0" > /dev/null
 
       - name: Spotless/ktlint check (cheapest gate — fails first)
         run: ./gradlew spotlessCheck
