@@ -4,6 +4,33 @@ Cumulative apply-progress artifact for this change (created per OpenSpec file
 convention; no prior apply-progress existed — a previous apply dispatch was
 cancelled after generating untracked partial files, reconciled in this slice).
 
+**Slice 11 update (SDK provisioning repair on `gate-verification`, provisioning-literals scope)**:
+hosted Actions run 36292331819 (real `pull_request` run for PR #8) passed steps
+1–5 (including the slice-10 repaired wrapper guard and wrapper-validation) and
+failed step 6 `Provision Android SDK in-job (no runner state relied on)` with
+a curl 404 on the old Linux commandlinetools archive URL plus an unavailable
+literal package `platforms;android-37`. Repaired both literals to the official
+current archive and the evidence-backed minor-versioned package; counts stay
+39/40 and task 4.4 stays OPEN — a fresh hosted PR run with explicit per-step
+statuses is the only acceptable evidence, and it does not exist yet.
+
+## Slice 11 (hosted-evidence CI provisioning repair): current commandlinetools URL + android-37.0 package
+
+- **Hosted failure (run 36292331819, job 108544681156, https://github.com/DANIELNAHUN/COLS/actions/runs/36292331819/job/108544681156)**: steps 1–5 passed — checkout, wrapper exec-bit guard (slice-10 awk assertion now PASSES hosted), wrapper-validation, JDK 17 setup. Step 6 failed: `curl: (22) The requested URL returned error: 404` for `https://dl.google.com/android/repository/commandlinetools-linux-13114788-update.zip`; the step also requests a package literal that does not exist in the repository.
+- **Root cause (two independent defects in one step)**: (1) the committed Linux commandlinetools archive filename (`commandlinetools-linux-13114788-update.zip`) is no longer published by Google — the URL 404s; (2) the pinned package literal `platforms;android-37` does not exist as such in Google's SDK repository: parent-verified sdkmanager evidence (task 0.2, `sdkmanager --list_installed`) shows the stable Android-37 platform package is the minor-versioned `platforms;android-37.0`.
+- **Repair applied (provisioning-literals scope only, evidence-backed)**: replaced the dead URL with the official current Linux archive `https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip` (source: official Android Developers page developer.android.com/studio?pkg=tools; published Linux SHA-256 `4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583`) and replaced the package literal with `platforms;android-37.0`. A minimal in-step integrity check was added — `sha256sum -c` against the page-published digest, immediately after the existing non-empty-file check — because the repair already replaced the URL and this is the cheapest way to keep the download provably the officially published artifact (same step scope, no new step, no third-party action). All other workflow bytes unchanged: trigger, action pins (checkout `fbc6f39…`, wrapper-validation `9c971963…`, setup-java `b6effb0…`), JDK 17 pin, wrapper-guard logic from slice 10, and all four Gradle gate invocations are untouched. The run-body comment records the 404/package-name root cause with the run id for future readers.
+- **Local validation evidence (exact commands/results; honest, no invented RED/GREEN)**:
+  - Old-URL absence: `grep -n '13114788' ci.yml` over non-comment lines → 0 hits (the old number appears ONLY in the repair-explanation comment); new URL present at line 76 (`commandlinetools-linux-15859902_latest.zip`).
+  - Package literal: the only non-comment `platforms;` line is `"platform-tools" "platforms;android-37.0" "build-tools;36.0.0"` (line 89); no `android-37"`-terminated old literal survives in any code path (the `android-37"`-form match at line 86 is a comment line, verified separately).
+  - YAML parse: full `yaml.safe_load` of the workflow → parse OK; job `gate` resolves 9 steps with unchanged step names; run-body literal assertions (URL, package `platforms;android-37.0`, SHA `4e4c464f…`) all pass in the parsed `run` string.
+  - `git diff --check` → exit 0, no whitespace/conflict-marker errors.
+  - `git diff --numstat` → 15 insertions / 3 deletions confined to `.github/workflows/ci.yml` (provisioning block only).
+  - `sha256sum` availability in the CI shell family (bash on ubuntu-latest; Git-for-Windows bash locally): GNU coreutils 8.32 present — no new tool dependency introduced by the checksum check.
+  - Parser caveat unchanged from slices 9–10: `safe_load` is a generic YAML 1.1 parser, not GitHub's exact Actions schema validation; the authoritative validation is the next real hosted pull-request run.
+- **Work unit evidence (Hard Gate)**: focused structural checks = the command set above (old-URL absence, package-literal presence, `git diff --check`, YAML parse) since no application test runner applies to a CI workflow provisioning literal. Runtime harness: N/A with reason — executing the provisioning step requires a hosted ubuntu-latest runner (the Windows host cannot reproduce the linux+android toolchain); the real integration path is the next hosted PR run and is the only acceptable evidence by the task 4.4 rule. Rollback boundary: revert the single `fix(ci)` provisioning commit on `gate-verification` — restores the URL/package literals and removes the sha256 check, touching only `.github/workflows/ci.yml`; (with the companion `docs(openspec)` commit reverted) restores `tasks.md` and this apply-progress file to their slice-10 text. No other file, step, or gate behavior touched.
+- **Strict TDD status (honest)**: Strict TDD is active per `openspec/config.yaml`, but this slice repairs hosted-CI provisioning literals, not application code with a test runner; no RED→GREEN test-runner cycle applies. The honest RED here is the hosted failure itself (run 36292331819): a real execution of the old literals that failed with the exact recorded errors. The GREEN state is NOT claimed locally — it can only be evidenced by the next hosted PR run; no RED/GREEN was fabricated.
+- **4.4 status not changed and must not be marked complete**: the sequencing of run 36292331819 (steps 1–5 passed) is important evidence that the earlier gate layers now execute hosted, but AC4 requires explicit pass/fail statuses for ALL steps of a fresh run. 4.4 stays `- [ ]` until the parent pushes this commit and a fresh pull_request run executes the whole workflow, including step 6 with the new literals. Repository task counts remain 39/40 with 4.4 the only pending item.
+
 **Slice 10 update (wrapper-mode guard repair on `gate-verification`, one-step-scope source change)**:
 hosted Actions run 36292006292 (real `pull_request` run for PR #8, checkout and
 all steps reached) failed only the wrapper-mode assertion because the guard's
