@@ -85,7 +85,29 @@ jobs:
           # because $ANDROID_HOME/cmdline-tools did not exist yet.
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
+          # Producer `yes` gets SIGPIPE (status 141) as soon as sdkmanager
+          # closes stdin after consuming the licenses — hosted PR run
+          # 36293077520 failed exactly there: `yes: standard output: Broken
+          # pipe`, exit 1 under `set -euo pipefail`, while sdkmanager itself
+          # had already succeeded (its deprecation warning proves it ran).
+          # Relax pipefail AND errexit ONLY around this one pipeline so the
+          # producer's SIGPIPE cannot abort a successful sdkmanager run, and
+          # capture sdkmanager's OWN status from PIPESTATUS[1] — not a
+          # blanket `|| true`, which would hide a real sdkmanager failure.
+          # sdkmanager's nonzero status still fails the step: the explicit
+          # check below re-exits with it (annotated) after pipefail/errexit
+          # are restored.
+          set +o pipefail
+          set +e
           yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null
+          licenses_status="${PIPESTATUS[1]}"
+          set -e
+          set -o pipefail
+          echo "sdkmanager --licenses exit: $licenses_status"
+          if [ "$licenses_status" -ne 0 ]; then
+            echo "::error::sdkmanager --licenses failed with status $licenses_status (producer SIGPIPE excluded)"
+            exit "$licenses_status"
+          fi
           # Android 37's stable package is minor-versioned (android-37.0); the
           # literal "platforms;android-37" never existed in the repository
           # (sdkmanager evidence from hosted run 36292331819).
