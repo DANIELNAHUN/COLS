@@ -17,7 +17,6 @@ import com.cols.launcher.domain.agent.ConfirmationPolicyContract
 class InMemoryAgentAdapter(
     private val confirmationPolicy: ConfirmationPolicyContract,
 ) : AgentPort {
-
     override suspend fun respondTo(request: AgentRequest): AgentOutcome {
         // The bootstrap stub proposes one canonical consequential action for
         // any request that mentions acting on someone; everything else gets a

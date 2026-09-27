@@ -25,12 +25,16 @@ import androidx.compose.ui.unit.dp
  * (MainActivity); the placeholder itself stays agent-agnostic.
  */
 @Composable
-fun PlaceholderScreen(onPlaceholderTap: () -> Unit, modifier: Modifier = Modifier) {
+fun PlaceholderScreen(
+    onPlaceholderTap: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
+            modifier =
+                Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -41,10 +45,11 @@ fun PlaceholderScreen(onPlaceholderTap: () -> Unit, modifier: Modifier = Modifie
                 onClick = onPlaceholderTap,
                 // 48dp meets the Material/RQ3 minimum touch-target floor; a
                 // senior-specific 64dp floor is a future product decision.
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .size(width = 120.dp, height = 48.dp)
-                    .semantics { contentDescription = "Placeholder action button" },
+                modifier =
+                    Modifier
+                        .padding(top = 8.dp)
+                        .size(width = 120.dp, height = 48.dp)
+                        .semantics { contentDescription = "Placeholder action button" },
             ) {
                 Text(text = "Placeholder")
             }

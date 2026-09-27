@@ -1,8 +1,8 @@
 package com.cols.launcher.data.agent
 
+import com.cols.launcher.domain.agent.ActionExecutionResult
 import com.cols.launcher.domain.agent.AgentAction
 import com.cols.launcher.domain.agent.AgentActionGateway
-import com.cols.launcher.domain.agent.ActionExecutionResult
 import com.cols.launcher.domain.agent.Confirmation
 import com.cols.launcher.domain.agent.ConfirmationPolicyContract
 
@@ -16,13 +16,15 @@ import com.cols.launcher.domain.agent.ConfirmationPolicyContract
 class InMemoryAgentActionGateway(
     private val confirmationPolicy: ConfirmationPolicyContract,
 ) : AgentActionGateway {
-
     private val executedActions = mutableListOf<AgentAction>()
 
     /** Inspectable record of what actually executed (test/diagnostic affordance). */
     val executed: List<AgentAction> get() = executedActions.toList()
 
-    override suspend fun perform(action: AgentAction, confirmation: Confirmation?): ActionExecutionResult {
+    override suspend fun perform(
+        action: AgentAction,
+        confirmation: Confirmation?,
+    ): ActionExecutionResult {
         if (!confirmationPolicy.isValid(confirmation, action)) {
             // Domain rule: no valid confirmation, no execution.
             return ActionExecutionResult.ConfirmationRequired
@@ -33,6 +35,5 @@ class InMemoryAgentActionGateway(
         return ActionExecutionResult.Executed(receipt = deterministicReceipt(action))
     }
 
-    private fun deterministicReceipt(action: AgentAction): String =
-        "executed ${action.kind} on ${action.target}"
+    private fun deterministicReceipt(action: AgentAction): String = "executed ${action.kind} on ${action.target}"
 }

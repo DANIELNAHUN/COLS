@@ -9,11 +9,15 @@ interface AgentPort {
     suspend fun respondTo(request: AgentRequest): AgentOutcome
 }
 
-data class AgentRequest(val utterance: String)
+data class AgentRequest(
+    val utterance: String,
+)
 
 sealed interface AgentOutcome {
     /** A pure-informative agent response with no consequential effect. */
-    data class Answer(val text: String) : AgentOutcome
+    data class Answer(
+        val text: String,
+    ) : AgentOutcome
 
     /** An agent-proposed consequential action: execution requires confirmation. */
     data class ActionProposal(
@@ -23,4 +27,6 @@ sealed interface AgentOutcome {
 }
 
 /** Opaque, single-use confirmation token issued by the ConfirmationPolicy. */
-data class Confirmation(val id: String)
+data class Confirmation(
+    val id: String,
+)

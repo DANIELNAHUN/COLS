@@ -8,20 +8,34 @@
 // Every version resolves from the version catalog; no version is hard-coded
 // here (project-scaffold spec).
 
+import kotlinx.kover.gradle.plugin.dsl.AggregationType
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.spotless)
 }
 
 android {
     namespace = "com.cols.launcher"
 
-    compileSdk = libs.versions.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.compileSdk
+            .get()
+            .toInt()
 
     defaultConfig {
         applicationId = "com.cols.launcher"
-        minSdk = libs.versions.minSdk.get().toInt()
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.targetSdk
+                .get()
+                .toInt()
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -62,4 +76,38 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// ktlint compliance for all Kotlin sources (app-testing format scenarios,
+// task 3.4): the check is `./gradlew spotlessCheck`, the fix is spotlessApply.
+spotless {
+    kotlin {
+        target("src/**/*.kt")
+        ktlint()
+    }
+}
+
+// Coverage gate (task 3.3 / TS-01, D-design RQ1 table): `:app:koverVerify`
+// enforces >=80% LINE coverage for the `domain` package ONLY — the agent
+// seam + confirmation rule. Scope is enforced by a rule-scoped filter (not a
+// global threshold): `ui`, `data`, and generated code are NOT measured by
+// the gate, and no other bound exists (app-testing spec defers global
+// thresholds). `koverHtmlReport`/`koverXmlReport` produce the domain-scoped
+// report after the unit suite; per-variant (Debug) reports stay unfiltered
+// for future full-module views.
+kover {
+    reports {
+        total {
+            filters {
+                includes {
+                    packages("com.cols.launcher.domain")
+                }
+            }
+            verify {
+                rule("domain line coverage floor") {
+                    minBound(80, CoverageUnit.LINE, AggregationType.COVERED_PERCENTAGE)
+                }
+            }
+        }
+    }
 }

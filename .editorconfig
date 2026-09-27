@@ -1,0 +1,8 @@
+# EditorConfig + ktlint configuration (read by ktlint via Spotless).
+root = true
+
+[*.{kt,kts}]
+# Composable functions use PascalCase by Compose convention; ktlint's
+# function-naming rule would flag them, so it skips @Composable functions
+# (the ktlint-documented Compose integration).
+ktlint_function_naming_ignore_when_annotated_with = Composable
