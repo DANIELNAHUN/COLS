@@ -1,0 +1,77 @@
+# COLS PR gate (design D6 / ci-pipeline spec).
+#
+# Runs on every pull_request with NO emulator and NO pre-installed Gradle:
+# Gradle comes solely from the committed wrapper (project-scaffold spec: the
+# wrapper is the only sanctioned entry point). The JDK pin below MUST equal
+# the catalog's [versions].jvm (currently 17) — ci-pipeline spec "Workflow
+# version pins trace to the version catalog". Update both together.
+#
+# First-party actions are pinned by full commit SHA (supply-chain guard for
+# the executable-review boundary; majors fbc6f39=checkout v5 and
+# b6effb0=setup-java v5 verified from their release tags on 2026-09-26).
+name: pr-gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: PR gate (format / lint / test / assemble)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Assert wrapper executable-bit integrity (threat matrix: wrapper)
+        shell: bash
+        run: |
+          mode="$(git ls-files -s gradlew)"
+          echo "staged mode: $mode"
+          grep -q '^100755 gradlew' <<<"$mode" || {
+            echo '::error::gradlew lost its executable bit (expected 100755); fix with: git update-index --chmod=+x gradlew'
+            exit 1
+          }
+
+      - name: Validate Gradle wrapper JAR checksums
+        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+
+      - name: Set up JDK 17 (temurin — matches catalog `jvm = "17"`)
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Provision Android SDK in-job (no runner state relied on)
+        # sdkmanager is NOT preinstalled on hosted runners: fetch the
+        # command-line tools ourselves, then install only the components this
+        # project pins (platform-tools, android-37, build-tools 36.0.0).
+        shell: bash
+        env:
+          ANDROID_HOME: ${{ runner.temp }}/android-sdk
+        run: |
+          set -euo pipefail
+          toolsUrl="https://dl.google.com/android/repository/commandlinetools-linux-13114788-update.zip"
+          curl -fsSL -A "COLS-CI" -o "$RUNNER_TEMP/cmdline-tools.zip" "$toolsUrl"
+          [ -s "$RUNNER_TEMP/cmdline-tools.zip" ] || { echo '::error::cmdline-tools download failed'; exit 1; }
+          unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
+          yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" \
+            "platform-tools" "platforms;android-37" "build-tools;36.0.0" > /dev/null
+
+      - name: Spotless/ktlint check (cheapest gate — fails first)
+        run: ./gradlew spotlessCheck
+
+      - name: Android Lint (`:app:lintDebug` — API-level misuse gate)
+        run: ./gradlew :app:lintDebug
+
+      - name: Unit tests (`:app:testDebugUnitTest` — workspace test command)
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Assemble debug APK (`:app:assembleDebug`)
+        run: ./gradlew :app:assembleDebug

@@ -5,13 +5,16 @@
 // when it lands, so `./gradlew spotlessCheck` covers all modules.
 plugins {
     alias(libs.plugins.androidApplication) apply false
+    // Compose Compiler plugin declared at the root per the Kotlin
+    // compose-compiler migration guide; every Compose module applies it.
+    alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kover) apply false
     alias(libs.plugins.spotless)
 }
 
 spotless {
     kotlinGradle {
-        target("*.gradle.kts", "gradle/**/*.gradle.kts")
+        target("*.gradle.kts", "gradle/**/*.gradle.kts", "app/*.gradle.kts")
         ktlint()
     }
 }
