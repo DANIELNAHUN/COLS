@@ -4,6 +4,44 @@ Cumulative apply-progress artifact for this change (created per OpenSpec file
 convention; no prior apply-progress existed — a previous apply dispatch was
 cancelled after generating untracked partial files, reconciled in this slice).
 
+**Slice 13 update (licenses-pipeline SIGPIPE repair on `gate-verification`,
+licenses-pipeline scope)**: hosted Actions run 36293077520 (real
+`pull_request` run for PR #8) executed steps 1–5 (all passed, including the
+slice-12 mkdir repair and the SHA-256 checksum verification) and failed step 6
+at `yes | sdkmanager --licenses` with `yes: standard output: Broken pipe`,
+exit 1 — under `set -euo pipefail`, the producer `yes` received SIGPIPE
+(status 141) when sdkmanager closed stdin after consuming the license stream,
+and pipefail promoted that producer status to the pipeline status even though
+sdkmanager itself succeeded (the hosted log shows sdkmanager proceeded far
+enough to emit its deprecation warning). Repaired by relaxing `pipefail`
+AND `errexit` only around that single pipeline and capturing sdkmanager's OWN
+status from `PIPESTATUS[1]`, restored immediately after; sdkmanager's own
+nonzero status still fails the step via an explicit annotated exit check (no
+blanket `|| true`). Counts stay 39/40 and task 4.4 stays OPEN — a fresh
+hosted PR run with explicit per-step statuses is the only acceptable
+evidence, and it does not exist yet.
+
+## Slice 13 (hosted-evidence CI repair): tolerate producer SIGPIPE; preserve sdkmanager's own exit status
+
+- **Hosted failure (run 36293077520, job 108546741155, https://github.com/DANIELNAHUN/COLS/actions/runs/36293077520/job/108546741155)**: steps 1–5 passed — checkout, the slice-10 wrapper exec-bit guard, wrapper JAR validation, JDK 17 setup, and the provisioning step's download/checksum/mkdir/unzip sequence (shear: the slice-12 extraction-directory repair held). Step 6 then failed with `yes: standard output: Broken pipe` and exit code 1; the workflow shell is `bash` with `set -euo pipefail`, and the failing construct is `yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null`.
+- **Root cause (single defect)**: sdkmanager reads the license stream `yes` writes, then closes stdin when done. `yes`'s next write raises SIGPIPE → exit status 141 for the producer. `pipefail` then makes the whole pipeline's status 141 (nonzero), and `errexit` aborts the step — even though the CONSUMER (sdkmanager) succeeded, proven by the deprecation warning it emitted in the hosted log. The failing pipeline status is the producer's, not sdkmanager's.
+- **Repair applied (licenses-pipeline scope only)**: around exactly the four pipeline-adjacent lines — `set +o pipefail` and `set +e` before the pipeline; `licenses_status="${PIPESTATUS[1]}"` immediately after (captures sdkmanager's own exit before anything else runs); `set -e` and `set -o pipefail` restored; then an explicit `if [ "$licenses_status" -ne 0 ]` check that echoes a `::error::` annotation `(producer SIGPIPE excluded)` and re-exits `exit "$licenses_status"`. This is NOT a blanket `|| true`: a sdkmanager nonzero status (e.g. 42) still fails the step with its own code and a visible annotation. `PIPESTATUS[1]` is read as the very next statement after the pipeline, so the bash array is intact. Preserved byte-identically: download URL, `-A "COLS-CI"` agent, non-empty check, SHA-256 check, `mkdir -p`/`unzip`, the sdkmanager install line with `platform-tools` / `platforms;android-37.0` / `build-tools;36.0.0`, all action pins (checkout `fbc6f39…`, wrapper-validation `9c971963…`, setup-java `b6effb0…`), JDK 17, slice-10 wrapper-guard logic, and all four Gradle gate invocations.
+- **Local validation evidence (exact commands/results; honest, no invented RED/GREEN)**:
+  - Hosted-defect local reproduction (RED): a POSIX-bash harness with REAL `yes` as producer and a sdkmanager stand-in that reads a bounded 10 stdin lines then exits 0 (deterministically SIGPIPE-ing the producer) — the OLD bare-pipeline construct under `set -euo pipefail` returned pipeline exit **141** (producer SIGPIPE), matching the hosted failure mechanism of run 36293077520.
+  - Repaired-construct case A (sdkmanager success, exit 0): step exit **0** — the producer's SIGPIPE is tolerated; a successful sdkmanager run no longer fails the step.
+  - Repaired-construct cases B/C (sdkmanager fails with **42** / **1**): step exits **42** / **1** respectively with the `::error::` annotation — the consumer's own failure status propagates; no failure is hidden.
+  - Full harness exit 0 on three consecutive identical runs (`HARNESS RESULT: PASS`). Harness file: `slice13_harness.sh` in the opencode temp dir (self-contained: stages its own stub; the construct under test is the workflow body verbatim minus comments).
+  - Two harness bugs were found and fixed during harness development, both harness-side (recorded for honesty): (1) diagnostics and the return value shared stdout — diagnostics moved to stderr; (2) `VAR=x yes | stub` in bash applies the env prefix to the FIRST pipeline command only (`yes`), so the stub never saw `SDK_EXIT` — env assignment must be placed on the consumer side of the pipe (case 4 in the older stub initially returned 127/2/`--licenses: numeric argument required` because of a stub-side conflation of the `--licenses` argument with an exit code and an unbounded `cat` drain of `yes`'s stream filling /tmp; replaced with a bounded reader).
+  - `git diff --check` → exit 0, no whitespace/conflict-marker errors.
+  - `git diff --numstat` → 22 insertions / 0 deletions confined to `.github/workflows/ci.yml`.
+  - YAML parse (`yaml.safe_load`): parse OK, job `gate` resolves 9 steps with UNCHANGED step names; structural dump equality vs HEAD for every job step except the provisioning step's run body and every non-job key (trigger/permissions/runner untouched).
+  - Ordering assertions on the parsed run body: `set +o pipefail` → pipeline → `PIPESTATUS[1]` capture → `set -e` → `set -o pipefail` → annotated check → install line, in that order; no `|| true` on the pipeline line or any code line of the step (the phrase appears only inside the explanatory comment).
+  - Shell static check: the provisioning `run:` body extracted verbatim from the parsed YAML and `bash -n`-checked under Git-for-Windows/WSL bash (GNU bash 5.3) → exit 0, no syntax errors. (`bash -n` is a parse check only.)
+  - Parser caveat unchanged from slices 9–12: `safe_load` is a generic YAML 1.1 parser, not GitHub's exact Actions schema validation; the authoritative validation is the next real hosted pull_request run.
+- **Work unit evidence (Hard Gate)**: focused check = the shell harness above (3 construct cases + old-construct RED) since no application test runner applies to a CI workflow shell repair. Runtime harness: N/A with reason — executing the provisioning step requires a hosted ubuntu-latest runner (the Windows host cannot reproduce the linux+android toolchain); the real integration path is the next hosted PR run and is the only acceptable evidence by the task 4.4 rule. Rollback boundary: revert the single `fix(ci)` licenses-pipeline commit on `gate-verification` — removes the 22 inserted lines (relaxation, capture, restore, annotated check, comment) and restores the licensing line to its slice-12 byte state, touching only `.github/workflows/ci.yml`; (with the companion `docs(openspec)` commit reverted) restores `tasks.md` and this apply-progress file to their slice-12 text. No other file, step, or gate behavior touched.
+- **Strict TDD status (honest)**: Strict TDD is active per `openspec/config.yaml`, but this slice repairs a hosted-CI shell defect, not application code with a test runner; no RED→GREEN test-runner cycle applies. The honest RED is two-layered: the hosted failure itself (run 36293077520) AND the harness's deterministic local reproduction of the old construct's 141 — the repaired construct then passes the success case and propagates both synthetic failure statuses. No RED/GREEN was fabricated.
+- **4.4 status not changed and must not be marked complete**: sequencing evidence accumulates (steps 1–5, checksum, mkdir/unzip, and now the licenses pipeline's shell mechanics are all individually verified — the last two only locally), but AC4 requires explicit pass/fail statuses for ALL steps of a FRESH hosted run. 4.4 stays `- [ ]` until the parent pushes this commit and a fresh pull_request run executes the whole workflow, including step 6 with the SIGPIPE repair. Repository task counts remain 39/40 with 4.4 the only pending item.
+
 **Slice 12 update (SDK provisioning extraction-directory repair on `gate-verification`, one-command scope)**:
 hosted Actions run 36292663587 (real `pull_request` run for PR #8) parsed the
 workflow and passed steps 1-5, including the slice-11 sha256 checksum
