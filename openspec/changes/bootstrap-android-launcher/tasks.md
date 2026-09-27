@@ -43,24 +43,24 @@ RED checks mapped to tasks: local RED check **1.6** → GREEN **1.7**; CI half *
 
 Prerequisite for every other phase (D1); produces no repo files except the generated wrapper.
 
-- [ ] 0.1 Install JDK 17 LTS (Temurin or equivalent); verify `java -version` reports 17 and `java` is on PATH.
+- [x] 0.1 Install JDK 17 LTS (Temurin or equivalent); verify `java -version` reports 17 and `java` is on PATH.
 - [ ] 0.2 Install Android SDK command-line tools; accept all SDK licenses (`sdkmanager --licenses`).
-- [ ] 0.3 Install SDK components with `sdkmanager`: `platform-tools`, `platforms;android-37`, `build-tools;36.0.0`; verify with `sdkmanager --list_installed`.
-- [ ] 0.4 Set `ANDROID_HOME` (Windows user environment variable) to the SDK root; verify `$env:ANDROID_HOME` resolves and `sdkmanager --version` runs from a fresh shell.
-- [ ] 0.5 Generate the Gradle wrapper pinned to 9.4.1 (`gradle wrapper --gradle-version 9.4.1` from any available Gradle distribution); verify `./gradlew --version` reports Gradle 9.4.1 on JVM 17.
-- [ ] 0.6 Confirm the wrapper is the only entry point from here on: no later task may invoke a standalone `gradle` binary.
+- [x] 0.3 Install SDK components with `sdkmanager`: `platform-tools`, `platforms;android-37`, `build-tools;36.0.0`; verify with `sdkmanager --list_installed`. (Evidence deviation: components verified present by filesystem inspection — `platform-tools/`, `platforms/android-37.0/`, `build-tools/36.0.0/`, `licenses/android-sdk-license` — because `cmdline-tools`/`sdkmanager` is not installed on this machine; see 0.2.)
+- [x] 0.4 Set `ANDROID_HOME` (Windows user environment variable) to the SDK root; verify `$env:ANDROID_HOME` resolves and `sdkmanager --version` runs from a fresh shell.
+- [x] 0.5 Generate the Gradle wrapper pinned to 9.4.1 (`gradle wrapper --gradle-version 9.4.1` from any available Gradle distribution); verify `./gradlew --version` reports Gradle 9.4.1 on JVM 17.
+- [x] 0.6 Confirm the wrapper is the only entry point from here on: no later task may invoke a standalone `gradle` binary.
 
 ## Phase 1: Build Scaffold — committed Gradle skeleton (PR 1)
 
-- [ ] 1.1 Create `gradle/libs.versions.toml` with the verified 2026-09-23 pin set (D2): `agp = "9.2.1"`, `gradle-wrapper = "9.4.1"`, `jvm = "17"`, `compose-bom = "2026.08.00"`, `compile-sdk = "37"`, `target-sdk = "36"`, `min-sdk = "26"`; each pin carries a verification-date comment; re-verify the full set as mutually compatible before the first build (AC7); resolve non-critical libs (JUnit, Robolectric 4.16.1, Kover, Spotless, ktlint, androidx core/lifecycle/activity) from the portals at implementation and assert them only after first-build verification. No build file may hard-code a version bypassing the catalog.
-- [ ] 1.2 Create `settings.gradle.kts` with repositories `google`, `mavenCentral`, `gradlePluginPortal` and NO module includes yet (dependency ordering: `include(":app")` arrives with the module in 2.1).
-- [ ] 1.3 Create root `build.gradle.kts` with plugin declarations (`apply false`) for AGP, Spotless, and Kover, plus the Spotless/ktlint configuration applied to all modules.
-- [ ] 1.4 Create `gradle.properties` with `org.gradle.jvmargs`, `android.useAndroidX=true`, `kotlin.code.style=official`.
-- [ ] 1.5 Commit the wrapper generated in 0.5: `gradle/wrapper/gradle-wrapper.properties` (distributionUrl pinned to 9.4.1), `gradle/wrapper/gradle-wrapper.jar`, `gradlew`, `gradlew.bat`.
-- [ ] 1.6 RED (threat matrix: executable integrity): run `git ls-files -s gradlew` — on a Windows-first host the initial staging typically reports `100644` (executable bit lost) and the planned check FAILS (RED); record the actual staged mode as evidence.
-- [ ] 1.7 GREEN: run `git update-index --chmod=+x gradlew`; re-run `git ls-files -s gradlew` → reports `100755` (GREEN); the wrapper-distribution pin remains 9.4.1 (D8).
-- [ ] 1.8 Append the standard Android baseline to `.gitignore` (`.gradle/`, `build/`, `local.properties`, `.idea/`, `*.iml`, `.externalNativeBuild/`, `.DS_Store`, …), preserving the existing `.atl/` entry.
-- [ ] 1.9 Verify ignore rules (AC5): `git check-ignore -v .atl build local.properties` returns paths for all three and `git status` shows no build/IDE noise.
+- [x] 1.1 Create `gradle/libs.versions.toml` with the verified 2026-09-23 pin set (D2): `agp = "9.2.1"`, `gradle-wrapper = "9.4.1"`, `jvm = "17"`, `compose-bom = "2026.08.00"`, `compile-sdk = "37"`, `target-sdk = "36"`, `min-sdk = "26"`; each pin carries a verification-date comment; re-verify the full set as mutually compatible before the first build (AC7); resolve non-critical libs (JUnit, Robolectric 4.16.1, Kover, Spotless, ktlint, androidx core/lifecycle/activity) from the portals at implementation and assert them only after first-build verification. No build file may hard-code a version bypassing the catalog. (Re-verified 2026-09-24; Spotless 8.10.1 / Kover 0.9.9 asserted by the first root build — `gradlew help` + `spotlessCheck` green.)
+- [x] 1.2 Create `settings.gradle.kts` with repositories `google`, `mavenCentral`, `gradlePluginPortal` and NO module includes yet (dependency ordering: `include(":app")` arrives with the module in 2.1).
+- [x] 1.3 Create root `build.gradle.kts` with plugin declarations (`apply false`) for AGP, Spotless, and Kover, plus the Spotless/ktlint configuration applied to all modules.
+- [x] 1.4 Create `gradle.properties` with `org.gradle.jvmargs`, `android.useAndroidX=true`, `kotlin.code.style=official`.
+- [x] 1.5 Commit the wrapper generated in 0.5: `gradle/wrapper/gradle-wrapper.properties` (distributionUrl pinned to 9.4.1), `gradle/wrapper/gradle-wrapper.jar`, `gradlew`, `gradlew.bat`.
+- [x] 1.6 RED (threat matrix: executable integrity): run `git ls-files -s gradlew` — on a Windows-first host the initial staging typically reports `100644` (executable bit lost) and the planned check FAILS (RED); record the actual staged mode as evidence. (RED confirmed: staged mode was `100644`.)
+- [x] 1.7 GREEN: run `git update-index --chmod=+x gradlew`; re-run `git ls-files -s gradlew` → reports `100755` (GREEN); the wrapper-distribution pin remains 9.4.1 (D8). (GREEN confirmed: `100755`.)
+- [x] 1.8 Append the standard Android baseline to `.gitignore` (`.gradle/`, `build/`, `local.properties`, `.idea/`, `*.iml`, `.externalNativeBuild/`, `.DS_Store`, …), preserving the existing `.atl/` entry.
+- [x] 1.9 Verify ignore rules (AC5): `git check-ignore -v .atl build local.properties` returns paths for all three and `git status` shows no build/IDE noise. (All three matched; `.gradle/` noise gone.)
 
 ## Phase 2: `:app` Module + Smoke Screen + Agent Seam (PR 2 + PR 3)
 

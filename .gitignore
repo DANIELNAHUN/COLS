@@ -1,2 +1,15 @@
 .atl/
 
+# Android / Gradle build baseline (project-scaffold spec)
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.externalNativeBuild/
+.cxx/
+.kotlin/
+captures/
+.DS_Store
+
+
