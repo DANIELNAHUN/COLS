@@ -28,7 +28,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Assert wrapper executable-bit integrity (threat matrix: wrapper)
+      - name: "Assert wrapper executable-bit integrity (threat matrix: wrapper)"
         shell: bash
         run: |
           mode="$(git ls-files -s gradlew)"
