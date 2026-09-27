@@ -11,6 +11,30 @@ point confirmed 14 (0.1, 0.3–0.6 = 5, plus all nine Phase 1 tasks). The stale
 15 was a bookkeeping error in a cancelled draft, not hidden completed work;
 this slice corrects the running counts to 18/40 after 2.1–2.3 and 2.12.
 
+**Slice 8 update (post-delivery machine-state continuation, artifact-only; commit pending)**:
+task 0.2 closed with verified local cmdline-tools evidence (parent-provided,
+exit-0 commands dated 2026-09-26) — running counts now 39/40 (completed: 39,
+pending: 1). Pending: 4.4 (live PR hosted-gate run) only — it stays OPEN
+because the CI workflow is not on `main` (0 registered workflows / 0 runs) and
+no hosted pass may be claimed. No source file was modified in this slice.
+
+## Slice 8 (machine-state cmdline-tools evidence): mark 0.2 done
+
+- [x] 0.2 close-out evidence (parent-verified local evidence dated 2026-09-26, consumed as reported; executor ran no remote operations):
+  - SDK root: `C:\Users\danielnahun\AppData\Local\Android\Sdk`; command-line tools installed at `cmdline-tools\latest`.
+  - `cmdline-tools\latest\bin\sdkmanager.bat --version` → `20.0`, exit 0.
+  - `sdkmanager --licenses` → all accepted, exit 0 (worker evidence).
+  - `sdkmanager --list_installed` → `platform-tools` 37.0.1, `platforms;android-37.0`, `build-tools;36.0.0`.
+  - `ANDROID_HOME` and `ANDROID_SDK_ROOT` remain correct and unchanged.
+  - Tool-honesty warning surfaced, not hidden: sdkmanager 20 understands SDK XML through version 3 while an XML version 4 was encountered. It is a version-compatibility warning only and did not prevent version/list verification.
+  - Error-path covered: the parent explicitly verified version and list commands despite the warning, so both the success path and the documented limitation are on record for this machine only.
+  - **Package-naming distinction (discovery/warning)**: the installed stable platform package is `platforms;android-37.0` (new minor-version style). A literal package named `platforms;android-37` was NOT and must not be claimed as installed. Task 0.2's scope is only the command-line tools + licenses; the platform package itself is 0.3's scope, and its `platforms;android-37` phrasing is satisfied by the minor-versioned `android-37.0` install (ci.yml installs the same stable package names).
+  - Machine state only; not committed to the repo.
+- ❌ 4.4 still open (unchanged from slice 7): hosted-gate evidence remains unavailable — `no checks reported on the 'pr6/docs-reinit' branch`, 0 registered workflows / 0 runs (Actions API). CI success is NOT confirmed; AC4 stays unevidenced until the workflow reaches `main` after PR #1 merges and a run actually executes.
+- Work unit evidence (artifact-only slice): focused test command `N/A` and runtime harness `N/A` with explicit reason — no production or test code changed in this slice; the only authored artifacts are `tasks.md` checkbox flips and this apply-progress merge. Rollback boundary: revert the single `docs(openspec)` commit on `pr6/docs-reinit` — restores 0.2 to `- [ ]` and this file to the slice-7 state; no other file touched, no behavior change possible.
+
+- [ ] 0.2 remains open (machine-state cmdline-tools install, deferred from Phase 0).
+
 **Slice 3 update (work unit 3, PR 3 / `pr3/agent-seam`, commit cfbe556)**:
 tasks 2.4–2.11 complete — running counts now 26/40 (completed: 26, pending: 14).
 
@@ -32,7 +56,7 @@ remote delivery completed by the maintainer: the stacked chain pushed to `origin
 
 - [x] 5.4 close-out evidence: all six branches pushed to `origin` and PRs opened (stacked-to-main): #1 `pr1/gradle-skeleton` → `main` (https://github.com/DANIELNAHUN/COLS/pull/1), #2 `pr2/app-module` → `pr1/gradle-skeleton` (https://github.com/DANIELNAHUN/COLS/pull/2), #3 `pr3/agent-seam` → `pr2/app-module` (https://github.com/DANIELNAHUN/COLS/pull/3, maintainer explicitly accepted `size:exception` at 443 authored lines), #4 `pr4/quality-loop` → `pr3/agent-seam` (https://github.com/DANIELNAHUN/COLS/pull/4), #5 `pr5/ci-gate` → `pr4/quality-loop` (https://github.com/DANIELNAHUN/COLS/pull/5), #6 `pr6/docs-reinit` → `pr5/ci-gate` (https://github.com/DANIELNAHUN/COLS/pull/6). PR #6's description carries the prepared rollback boundary text; task 5.4 marked [x] on that evidence.
 - ❌ 4.4 evidence state (kept open): a hosted-gate check on `pr6/docs-reinit` returned exactly `no checks reported on the 'pr6/docs-reinit' branch` — no workflow can trigger because the CI workflow is not present on `main` (Actions API reports 0 registered workflows and 0 runs). GitHub Actions permissions are enabled but unused. The three gate steps (`spotlessCheck`, `lintDebug`, `testDebugUnitTest` + `assembleDebug`) therefore have ZERO hosted pass/fail status; AC4 is NOT evidenced. The blocker resolves only once PR #1 (workflow arrives on `main`) merges and the workflow runs, so 4.4's completion must be re-checked then — no simulated or local evidence can substitute.
-- [ ] 0.2 remains open (machine-state cmdline-tools install, deferred from Phase 0).
+- [x] 0.2 closed in slice 8 (the line above is superseded — kept for history).
 
 ## Slice 6 (work unit 6, PR 6 / `pr6/docs-reinit`): Phase 5 docs + re-init + scope-guard
 
@@ -49,12 +73,12 @@ The bootstrap change is additive except three modified files (`.gitignore`, `REA
 
 ## Cumulative Task State
 
-Total tasks: 40 — completed: 38, pending: 2 (0.2 machine-state cmdline-tools; 4.4 live PR run — the latter is now a hosted-infra blocker: the workflow is not on `main`, so no PR in this chain can show gate checks until the chain's first PRs merge; see Slice 7's evidence note).
+Total tasks: 40 — completed: 39, pending: 1 (4.4 live PR run — the hosted-infra blocker: the workflow is not on `main`, so no PR in this chain can show gate checks until the chain's first PRs merge; see Slice 7's evidence note).
 
 ### Phase 0: Environment Bootstrap (machine state)
 
 - [x] 0.1 JDK 17 LTS verified: `java -version` → Temurin 17.0.20.1+1 (OpenJDK 17.0.20.1), on PATH.
-- [ ] 0.2 Android SDK command-line tools — NOT DONE: no `cmdline-tools/` in the SDK root and no `sdkmanager` binary found on PATH or under `%LOCALAPPDATA%\Android` or `%ANDROID_HOME%`. Licenses evidence exists (`licenses/android-sdk-license`), but the cmdline-tools install itself is not evidenced. Left unchecked.
+- [x] 0.2 Android SDK command-line tools — CLOSED in slice 8 (verified 2026-09-26): installed at `cmdline-tools\latest` under `C:\Users\danielnahun\AppData\Local\Android\Sdk`; `sdkmanager.bat --version` → 20.0, exit 0; `sdkmanager --licenses` → all accepted, exit 0. Package-naming discovery: `--list_installed` shows `platforms;android-37.0` — no literal `platforms;android-37` package exists; the minor-versioned name satisfies 0.3's intent. Tool warning surfaced: sdkmanager 20 reads SDK XML ≤ v3 but an XML v4 was encountered — version-compatibility warning only, did not prevent verification. Machine state; not committed.
 - [x] 0.3 SDK components verified present by filesystem inspection (deviation: `sdkmanager --list_installed` impossible without 0.2): `platform-tools/`, `platforms/android-37.0/`, `build-tools/36.0.0/`, `licenses/android-sdk-license`.
 - [x] 0.4 `ANDROID_HOME` and `ANDROID_SDK_ROOT` both resolve to `C:\Users\danielnahun\AppData\Local\Android\Sdk`.
 - [x] 0.5 Wrapper verified: `gradlew.bat --version` → Gradle 9.4.1 (build 2026-03-19), Launcher JVM 17.0.20.1 (Eclipse Adoptium), OS Windows 11 amd64.
@@ -268,7 +292,7 @@ Authored line count ≈ 108 (catalog 35, settings 29, root build 17, gradle.prop
 
 ## Issues Found
 
-1. `cmdline-tools`/`sdkmanager` absent — task 0.2 remains open; future SDK management has no CLI path until it is installed.
+1. `cmdline-tools`/`sdkmanager` absent — task 0.2 remains open; future SDK management has no CLI path until it is installed. (RESOLVED in slice 8: cmdline-tools verified installed 2026-09-26, see task 0.2 evidence. Residual quirk: sdkmanager 20 reads SDK XML ≤ v3 while repository XML v4 is emitted — harmless for version/list today, but future `sdkmanager` behavior on newer XML versions should be re-checked if component management needs change.)
 2. Spotless initially failed on CRLF — resolved durably via `.gitattributes`; evidence recorded above.
 3. Cancelled-dispatch partial files were reconciled in place and retained (all valid; no partial file was deleted).
 4. **Catalog provenance honesty note**: the cancelled draft's `libs.versions.toml` comment cites "androidx versions page (2026-09-25)" and pins `activityCompose = 1.13.0`, `junit = 4.13.2`, `robolectric = 4.16.1` — `robolectric`/`junit` match the design notes, but the `activityCompose` pin was NOT re-verified against a live source in this bounded slice, and no group/accessor is currently exercised by any source file (no Kotlin sources exist yet). The pins are argued by the successful first build only at the dependency-resolution level. Task 2.1 asserts catalog correctness "with approved catalog pins" as dispatched; the re-verification debt is noted here and belongs with tasks 2.4+ (first real consumers) or verify phase.
@@ -285,4 +309,5 @@ Authored line count ≈ 108 (catalog 35, settings 29, root build 17, gradle.prop
 - [x] 4.1–4.3 CI workflow + wrapper-integrity guard created and scenario-verified (slice 5, commit 6ccd392)
 - [x] Phase 5 **DONE (slice 6, PR 6 commits e5d60fe + dbb9e60 + 802e4cb; 5.4 closed in slice 7 via PR #6)** — README env docs, `sdd-init` re-run, scope-guard audit, rollback boundary now in PR #6's description
 - [ ] 4.4 live green run on the bootstrap PR (AC4) — blocked on hosted CI: workflow not on `main` yet; `no checks reported on the 'pr6/docs-reinit' branch`; re-check after PR #1 merges and the workflow actually runs
-- [ ] 0.2 cmdline-tools install (machine state, deferred)
+- [x] 0.2 cmdline-tools install CLOSED (slice 8, machine-state evidence dated 2026-09-26)
+- [ ] 4.4 live green run on the bootstrap PR (AC4) — LAST OPEN TASK. Blocked on hosted CI: workflow not on `main` yet; `no checks reported on the 'pr6/docs-reinit' branch`; re-check after PR #1 merges and the workflow actually runs. Do not claim CI success before a real hosted run.
