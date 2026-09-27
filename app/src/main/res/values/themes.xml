@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder theme (design: "Material 3 theme placeholder"). Compose owns
+     visual theming in code (MaterialTheme in ui/); this XML theme only
+     provides a NoActionBar window for the activity host. A real XML theme
+     (or the com.google.android.material dependency) is deferred until a
+     change actually needs it. -->
+<resources>
+    <style name="Theme.COLS" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

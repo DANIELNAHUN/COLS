@@ -1,8 +1,7 @@
 // COLS root settings. The version catalog is the single source of pins;
 // no build file may hard-code a version (project-scaffold spec).
 //
-// Module includes arrive with the `:app` module (include(":app")); the
-// bootstrap keeps this file module-free until then.
+// Exactly one module is included (D4): the single `:app` application module.
 
 pluginManagement {
     repositories {
@@ -27,3 +26,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "COLS"
+
+include(":app")
