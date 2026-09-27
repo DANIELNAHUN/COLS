@@ -4,6 +4,32 @@ Cumulative apply-progress artifact for this change (created per OpenSpec file
 convention; no prior apply-progress existed — a previous apply dispatch was
 cancelled after generating untracked partial files, reconciled in this slice).
 
+**Slice 12 update (SDK provisioning extraction-directory repair on `gate-verification`, one-command scope)**:
+hosted Actions run 36292663587 (real `pull_request` run for PR #8) parsed the
+workflow and passed steps 1-5, including the slice-11 sha256 checksum
+verification, then failed step 6 with `checkdir: cannot create extraction
+directory: /home/runner/work/_temp/android-sdk/cmdline-tools` because the step
+unzips into `$ANDROID_HOME/cmdline-tools` without creating the parent first.
+Repaired with a minimal `mkdir -p` immediately before `unzip`; counts stay
+39/40 and task 4.4 stays OPEN - a fresh hosted PR run with explicit per-step
+statuses is the only acceptable evidence, and it does not exist yet.
+
+## Slice 12 (hosted-evidence CI provisioning repair): create the extraction directory before unzip
+
+- **Hosted failure (run 36292663587, job 108545595231, https://github.com/DANIELNAHUN/COLS/actions/runs/36292663587/job/108545595231)**: steps 1-5 passed - checkout, wrapper exec-bit guard, wrapper JAR validation, JDK 17 setup, and the provisioning step reached its shell body: the slice-11 URL served the archive, the non-empty check passed, and the page-published SHA-256 `sha256sum -c` verification PASSED before the failure. Step 6 then failed with `checkdir: cannot create extraction directory: /home/runner/work/_temp/android-sdk/cmdline-tools` / `No such file or directory`.
+- **Root cause (single defect)**: the step runs `unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"` assuming the extraction parent exists. unzip does not create intermediate directories (`checkdir` reports exactly this class of failure), and nothing earlier in the job creates `$ANDROID_HOME/cmdline-tools` - the env var only points at `runner.temp/android-sdk`, whose parent (`runner.temp`) exists. The slice-11 URL, checksum, and package literals were NOT at fault; the checksum verification itself passed.
+- **Repair applied (one-command scope)**: added `mkdir -p "$ANDROID_HOME/cmdline-tools"` immediately before the `unzip` line, with a comment citing hosted run 36292663587. `mkdir -p` is idempotent, so the step remains rerun-safe, and it creates only the literal path unzip writes into. Preserved byte-identically: download URL, `-A "COLS-CI"` agent, non-empty check, SHA-256 integrity check, unzip command and flags, `yes | sdkmanager --licenses`, the sdkmanager install line with package literals `platform-tools` / `platforms;android-37.0` / `build-tools;36.0.0`, all action pins (checkout `fbc6f39...`, wrapper-validation `9c971963...`, setup-java `b6effb0...`), the JDK 17 pin, the slice-10 wrapper-guard logic, and all four Gradle gate invocations.
+- **Local validation evidence (exact commands/results; honest, no invented RED/GREEN)**:
+  - `git diff --check` -> exit 0, no whitespace/conflict-marker errors.
+  - `git diff --numstat` -> 4 insertions / 0 deletions confined to `.github/workflows/ci.yml`.
+  - YAML parse: full `yaml.safe_load` of the workflow -> parse OK, job `gate` resolves 9 steps with unchanged step names.
+  - Parsed-run ordering check: in the parsed `run` string of the provisioning step, `mkdir -p` resolves before the `unzip -q` command -> mkdir-precedes-unzip True. A first quick scripted check initially printed FAIL - that was a harness bug in the throwaway check itself (it searched the bare substring `unzip`, which also matches the new repair comment wording); re-checked with the exact command substring and confirmed PASS.
+  - Shell static check: the provisioning `run:` body extracted verbatim from the parsed YAML and syntax-checked with Git-for-Windows `bash -n` -> exit 0, no syntax errors. (`bash -n` checks parse validity only; it does not execute mkdir/unzip.)
+  - Parser caveat unchanged from slices 9-11: `safe_load` is a generic YAML 1.1 parser, not GitHub exact Actions schema validation; the authoritative validation is the next real hosted pull-request run.
+- **Work unit evidence (Hard Gate)**: focused structural checks = the command set above (`git diff --check`, YAML parse, ordering and shell-syntax checks of the provision step, 4/0 numstat) since no application test runner applies to a CI workflow shell fix. Runtime harness: N/A with reason - executing the provisioning step requires a hosted ubuntu-latest runner (the Windows host cannot reproduce the linux+android toolchain); the real integration path is the next hosted PR run and is the only acceptable evidence by the task 4.4 rule. Rollback boundary: revert the single `fix(ci)` extraction-directory commit on `gate-verification` - removes the three inserted lines (comment + `mkdir -p`) and restores the provisioning step to its slice-11 byte state, touching only `.github/workflows/ci.yml`; (with the companion `docs(openspec)` commit reverted) restores `tasks.md` and this apply-progress file to their slice-11 text. No other file, step, or gate behavior touched.
+- **Strict TDD status (honest)**: Strict TDD is active per `openspec/config.yaml`, but this slice repairs a hosted-CI shell defect, not application code with a test runner; no RED->GREEN test-runner cycle applies. The honest RED here is the hosted failure itself (run 36292663587): a real execution where the checksum passed but extraction failed on the missing directory. The GREEN state is NOT claimed locally - it can only be evidenced by the next hosted PR run; no RED/GREEN was fabricated.
+- **4.4 status not changed and must not be marked complete**: sequencing evidence accumulates (steps 1-5 now pass hosted, including the checksum verification), but AC4 requires explicit pass/fail statuses for ALL steps of a fresh run. 4.4 stays `- [ ]` until the parent pushes this commit and a fresh pull_request run executes the whole workflow, including step 6 with the mkdir repair. Repository task counts remain 39/40 with 4.4 the only pending item.
+
 **Slice 11 update (SDK provisioning repair on `gate-verification`, provisioning-literals scope)**:
 hosted Actions run 36292331819 (real `pull_request` run for PR #8) passed steps
 1–5 (including the slice-10 repaired wrapper guard and wrapper-validation) and
