@@ -18,6 +18,62 @@ pending: 1). Pending: 4.4 (live PR hosted-gate run) only — it stays OPEN
 because the CI workflow is not on `main` (0 registered workflows / 0 runs) and
 no hosted pass may be claimed. No source file was modified in this slice.
 
+**Slice 9 update (post-merge hosted-run evidence continuation, artifact-only; commit pending)**:
+PRs #1–#6 were merged in order as requested (PR #1 → `main`; PRs #2–#6 merged
+into their stacked base branches — NOT yet into `main`). Hosted `ci.yml` runs
+now exist but both conclude `failure` with EMPTY jobs arrays and `log not
+found`, so no explicit gate-step pass/fail statuses exist and AC4 stays
+UNVERIFIED. Task 4.4 stays unchecked; counts remain honestly 39/40
+(completed: 39, pending: 1). No source file was modified in this slice; the
+only edits are `tasks.md` (4.4 evidence note) and this apply-progress merge.
+
+## Slice 9 (post-merge hosted-run evidence): PRs #1–#6 merged, two hosted runs recorded FAILED, 4.4 stays open
+
+Parent-confirmed authoritative remote evidence (consumed as reported; this
+executor ran NO remote operations — artifact-only continuation after
+authorized remote merges):
+
+- **Merge record — as requested, NOT integrated into main**: PRs #1–#6 were
+  merged in order. PR #1 (`pr1/gradle-skeleton`) merged to `main`; PRs #2–#6
+  each merged into their stacked base branches (`pr2/app-module` → base of
+  #1-side chain, `pr3/agent-seam` → `pr2/app-module`, `pr4/quality-loop` →
+  `pr3/agent-seam`, `pr5/ci-gate` → `pr4/quality-loop`, `pr6/docs-reinit` →
+  `pr5/ci-gate`). Each merge was confirmed by the GitHub API. Integration
+  limit stated honestly: `main` remains at the PR #1 merge SHA
+  `10f0c5e921776c1c979b4ff06298bc708af9815b`; `GET
+  contents/.github/workflows/ci.yml?ref=main` → 404, i.e. `ci.yml` is still
+  NOT on `main`. No integration merge exists, none is claimed, and none was
+  performed by this slice.
+- **Hosted run evidence — both runs FAILED (parent-observed via GitHub API)**:
+
+  | Run ID | Workflow | Event | Head branch | Status | Conclusion | Jobs | Log | URL |
+  |---|---|---|---|---|---|---|---|---|
+  | `36291009542` | `.github/workflows/ci.yml` | `push` | `pr4/quality-loop` | `completed` | `failure` | EMPTY array | `log not found` | https://github.com/DANIELNAHUN/COLS/actions/runs/36291009542 |
+  | `36291018697` | `.github/workflows/ci.yml` | `push` | `pr5/ci-gate` | `completed` | `failure` | EMPTY array | `log not found` | https://github.com/DANIELNAHUN/COLS/actions/runs/36291018697 |
+
+  - Both runs are now registered: `gh workflow list --all` reports
+    `.github/workflows/ci.yml active` (workflow id `368080757`); the Actions
+    API reports exactly two runs and both failed. This supersedes the older
+    "0 registered workflows / 0 runs" state recorded in slices 7–8.
+- **No explicit gate-step statuses exist**: because both runs expose EMPTY
+  jobs arrays, none of the defined gate steps (`git ls-files -s gradlew`
+  exec-bit assert, wrapper-JAR validation, `spotlessCheck`, `lintDebug`,
+  `testDebugUnitTest`, `assembleDebug`) ever produced an explicit pass/fail
+  status. A run-level `failure` conclusion with zero jobs carries zero
+  gate-step results; root cause is unavailable because log retrieval returned
+  `log not found`. Stating the conclusion truthfully: the hosted runs FAIL,
+  they do not pass, and they cannot be claimed as green on any PR.
+- **AC4 remains UNVERIFIED**: task 4.4's required evidence shape is unchanged
+  — a real hosted run whose per-step gate statuses are explicitly reported on
+  the PR check list. Neither a failed run-level conclusion with empty jobs
+  nor a local/workspace derivation substitutes for it. 4.4 stays `- [ ]`.
+- ❌ 0.2, 5.4 remain as previously closed; no prior slice evidence is altered
+  or removed. Historical 4.4 notes above (slices 7–8) record an earlier
+  evidence state that is now superseded — kept verbatim for history.
+- **Cumulative counts reconciled honestly**: total 40 tasks — completed 39,
+  pending 1 (4.4 only). Not archive-ready: archive is withheld while AC4 is
+  unevidenced and the chain is not integrated into `main`.
+
 ## Slice 8 (machine-state cmdline-tools evidence): mark 0.2 done
 
 - [x] 0.2 close-out evidence (parent-verified local evidence dated 2026-09-26, consumed as reported; executor ran no remote operations):
@@ -73,7 +129,13 @@ The bootstrap change is additive except three modified files (`.gitignore`, `REA
 
 ## Cumulative Task State
 
-Total tasks: 40 — completed: 39, pending: 1 (4.4 live PR run — the hosted-infra blocker: the workflow is not on `main`, so no PR in this chain can show gate checks until the chain's first PRs merge; see Slice 7's evidence note).
+Total tasks: 40 — completed: 39, pending: 1 (4.4 live PR run — updated in
+slice 9: the "workflow not on `main`, zero runs" blocker is superseded; PRs
+#1–#6 are merged, `ci.yml` is registered (workflow id `368080757`) and the
+Actions API reports two runs, both concluding `failure` with EMPTY jobs
+arrays and `log not found` — no explicit gate-step pass/fail statuses were
+produced, so AC4 remains UNVERIFIED; see Slice 9's evidence table). Not
+archive-ready.
 
 ### Phase 0: Environment Bootstrap (machine state)
 
@@ -108,7 +170,7 @@ Total tasks: 40 — completed: 39, pending: 1 (4.4 live PR run — the hosted-in
 - [x] 4.1 `.github/workflows/ci.yml` created (77 insertions): `on: pull_request`, `ubuntu-latest`, `permissions: contents: read`; steps = checkout (SHA-pinned, `persist-credentials: false`) → wrapper exec-bit assert → wrapper-JAR validation → temurin JDK 17 → in-job SDK provisioning (bounded curl of Google `commandlinetools-linux-13114788-update.zip` + `unzip` into `${{ runner.temp }}/android-sdk` + `yes | sdkmanager --licenses` + `sdkmanager` install of exactly `platform-tools`, `platforms;android-37`, `build-tools;36.0.0`) → `./gradlew spotlessCheck` → `./gradlew :app:lintDebug` → `./gradlew :app:testDebugUnitTest` → `./gradlew :app:assembleDebug`. No emulator; Gradle only via the committed wrapper. Deviation from the D6 sketch: the design named no concrete SDK provisioning mechanism, so a bounded self-run shell step implements it (a third-party SDK setup action was rejected per D6's supply-chain rationale).
 - [x] 4.2 Wrapper-integrity guard in the same commit: `git ls-files -s gradlew` must report `100755` (grep-asserted before any JDK/SDK spend; failure emits a `::error::` annotation + fix hint); wrapper JAR checksums validated by `gradle/actions/wrapper-validation` pinned to SHA `9c971963bec38e04b3d30dcc455b5382be2fdbfb` (= tag `v6`; the annotated tag object `4733eaac…` → commit `9c971963…` chain was re-resolved twice via the GitHub API on 2026-09-26 after one earlier read returned a differently-shaped/stale payload — pinned only after the repeat fetch confirmed it; a decoy lookalike SHA `d990644…` circulating in local dotfiles was discarded because it does not resolve). First-party pins: checkout `fbc6f39…` = v5, setup-java `b6effb0…` = v5 (both SHA→major verified; 40-char length re-checked by regex).
 - [x] 4.3 Scenario checks verified locally against the committed file (live cold-runner execution is inherently the CI host's job and is covered by 4.4): (1) `pull_request` trigger + `ubuntu-latest` + JDK `17` in workflow, and catalog `jvm = "17"` confirmed — matched-pair equality; (2) exactly 4 `run: ./gradlew …` invocations and 0 bare `gradle …` invocations; (3) emulator/avd/adb-shell string search over the file: 1 match, the header comment stating "NO emulator"; (4) provisioning is self-contained in-job with a size check (`[ -s … ]`) after download, licenses accepted in-job, and the installed component set matching the tasks-0.3 filesystem-verified list. YAML sanity: `on:`/steps/job keys verified by structural grep; file is UTF-8 clean, no BOM, LF endings in the index (`.git/info/attributes` local patch `*.yml text eol=lf` neutralized the transcode-on-stage hazard; the forward-looking `.gitattributes` fix is recorded below).
-- [ ] 4.4 Live green run on the bootstrap PR (AC4) — STILL OPEN with recorded unavailable-evidence: the chain is now pushed and PRs #1–#6 open, but a hosted-gate check on `pr6/docs-reinit` returned exactly `no checks reported on the 'pr6/docs-reinit' branch`; GitHub Actions permissions are enabled while the workflow is NOT present on `main` (0 registered workflows / 0 runs, Actions API). Root cause: no workflow on the default branch → no PR in this chain can trigger `ci.yml`. Expected evidence remains: all gate steps report explicit pass/fail on the PR check list, per step names in ci.yml — only obtainable after PR #1 (which introduces ci.yml to `main`) merges and a run actually executes. Not a local-runtime substitute, not derivable from local verification alone.
+- [ ] 4.4 Live green run on the bootstrap PR (AC4) — STILL OPEN, evidence state updated in slice 9 (post-merge): PRs #1–#6 merged in order (PR #1 → `main`; #2–#6 into stacked base branches; each merge GitHub-API-confirmed), `ci.yml` now registered (workflow id `368080757`, `gh workflow list --all` reports active) with exactly two hosted runs, BOTH failing: run `36291009542` (event `push`, head `pr4/quality-loop`, `completed`/`failure`, jobs EMPTY, log `log not found` — https://github.com/DANIELNAHUN/COLS/actions/runs/36291009542) and run `36291018697` (event `push`, head `pr5/ci-gate`, `completed`/`failure`, jobs EMPTY, log `log not found` — https://github.com/DANIELNAHUN/COLS/actions/runs/36291018697). Empty jobs ⇒ zero explicit gate-step pass/fail statuses (the exec-bit assert, wrapper validation, `spotlessCheck`, `lintDebug`, `testDebugUnitTest`, `assembleDebug` steps never reported); root cause unavailable. Integration honesty: `main` is still at the PR #1 merge SHA `10f0c5e921776c1c979b4ff06298bc708af9815b` and `GET contents/.github/workflows/ci.yml?ref=main` → 404 — the full chain is NOT on `main` and no integration merge may be claimed. Closing 4.4 still requires a real hosted run with explicit per-step pass/fail statuses on the PR check list. Do not claim CI success before such a run.
 - Note: the `.gitattributes`-visible fix for YAML files (`*.yml text eol=lf`) was NOT committed in this slice to keep the work-unit boundary exact (attributes changes affect every `yml` blob, not just this one); it belongs with Phase 5's docs/repo-hygiene slice alongside the existing `.gitattributes`.
 
 ### Slice 3 (work unit 3, PR 3 / `pr3/agent-seam`, commit cfbe556): agent seam
@@ -301,13 +363,13 @@ Authored line count ≈ 108 (catalog 35, settings 29, root build 17, gradle.prop
 7. **Slice 4 Compose-test runtime cost**: the 3-test smoke suite takes ~17s on Robolectric (first Compose render + GC on the JVM); total suite still exits in <50s. Acceptable for the JVM-first loop; instrumented-layer cost is out of bootstrap scope.
 8. `androidx.test:core` / `androidx.test.ext:junit` are used by the new tests via `ui-test-junit4`'s transitive dependencies rather than explicit catalog rows — noted deliberately: declaring them explicitly would require choosing unverified version pins, which the honesty rule forbids asserting without a live source; the build resolves them deterministically through the pinned BOM/POM graph.
 
-## Remaining Tasks (next slice: Phase 4 CI gate, then Phase 5 docs/re-init)
+## Remaining Tasks (final open task: 4.4 hosted-gate verification)
 
 - [x] 2.4–2.11 **DONE (slice 3, commit cfbe556)** — RED→GREEN closed (AC2), seam + stub + screen + wiring in place, 10 tests green
 - [x] 2.12 DONE in slice 2 (AC1 green, exit 0) — see Phase 2 evidence
 - [x] Phase 3 **DONE (slice 4, commit a1cc252)** — Robolectric (SDK 35) + Compose smoke (48dp/semantics) + Kover domain gate (96%) + spotlessCheck green + AC2 deliberate-break cycle captured
 - [x] 4.1–4.3 CI workflow + wrapper-integrity guard created and scenario-verified (slice 5, commit 6ccd392)
 - [x] Phase 5 **DONE (slice 6, PR 6 commits e5d60fe + dbb9e60 + 802e4cb; 5.4 closed in slice 7 via PR #6)** — README env docs, `sdd-init` re-run, scope-guard audit, rollback boundary now in PR #6's description
-- [ ] 4.4 live green run on the bootstrap PR (AC4) — blocked on hosted CI: workflow not on `main` yet; `no checks reported on the 'pr6/docs-reinit' branch`; re-check after PR #1 merges and the workflow actually runs
 - [x] 0.2 cmdline-tools install CLOSED (slice 8, machine-state evidence dated 2026-09-26)
-- [ ] 4.4 live green run on the bootstrap PR (AC4) — LAST OPEN TASK. Blocked on hosted CI: workflow not on `main` yet; `no checks reported on the 'pr6/docs-reinit' branch`; re-check after PR #1 merges and the workflow actually runs. Do not claim CI success before a real hosted run.
+- [x] Slice 9 (post-merge continuation): PRs #1–#6 merged in order as requested (PR #1 → `main`; #2–#6 into stacked base branches); two hosted `ci.yml` runs recorded FAILED (runs `36291009542`, `36291018697` — both `completed`/`failure` with EMPTY jobs and `log not found`); no explicit gate-step statuses exist; counts reconciled 39/40 with 4.4 unchecked; not archive-ready
+- [ ] 4.4 live green run on the bootstrap PR (AC4) — LAST OPEN TASK. Current evidence (slice 9): two hosted runs exist and both FAIL — run `36291009542` (head `pr4/quality-loop`, jobs EMPTY, `log not found`) and run `36291018697` (head `pr5/ci-gate`, jobs EMPTY, `log not found`); zero explicit gate-step pass/fail statuses; root cause unavailable. `main` remains at the PR #1 merge SHA `10f0c5e921776c1c979b4ff06298bc708af9815b`; `ci.yml` is NOT on `main` (contents API → 404). Closing requires a real hosted run with explicit per-step pass/fail statuses on the PR check list after the chain is integrated. Never claim CI success before such a run.
