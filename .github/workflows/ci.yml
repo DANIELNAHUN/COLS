@@ -30,11 +30,23 @@ jobs:
 
       - name: "Assert wrapper executable-bit integrity (threat matrix: wrapper)"
         shell: bash
+        # `git ls-files -s` emits "<mode> <object> <stage>\t<path>" (e.g.
+        # "100755 739907d... 0\tgradlew"). The former grep expected the path
+        # directly after the mode and rejected a well-staged wrapper. Assert
+        # the full tracked-entry format instead: mode exactly 100755, a
+        # 40-hex object id, stage 0, and path exactly "gradlew".
         run: |
           mode="$(git ls-files -s gradlew)"
           echo "staged mode: $mode"
-          grep -q '^100755 gradlew' <<<"$mode" || {
-            echo '::error::gradlew lost its executable bit (expected 100755); fix with: git update-index --chmod=+x gradlew'
+          printf '%s\n' "$mode" | awk '
+            {
+              seen = 1
+              ok = 1
+              n = split($0, f, "\t")
+              if (n != 2 || f[1] !~ /^100755 [0-9a-f]{40} 0$/ || f[2] != "gradlew") ok = 0
+            }
+            END { if (!seen || !ok) exit 1 }' || {
+            echo '::error::gradlew lost its executable bit (expected a tracked entry "100755 <sha> 0<TAB>gradlew" from git ls-files -s); fix with: git update-index --chmod=+x gradlew'
             exit 1
           }
 
