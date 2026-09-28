@@ -28,13 +28,25 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Assert wrapper executable-bit integrity (threat matrix: wrapper)
+      - name: "Assert wrapper executable-bit integrity (threat matrix: wrapper)"
         shell: bash
+        # `git ls-files -s` emits "<mode> <object> <stage>\t<path>" (e.g.
+        # "100755 739907d... 0\tgradlew"). The former grep expected the path
+        # directly after the mode and rejected a well-staged wrapper. Assert
+        # the full tracked-entry format instead: mode exactly 100755, a
+        # 40-hex object id, stage 0, and path exactly "gradlew".
         run: |
           mode="$(git ls-files -s gradlew)"
           echo "staged mode: $mode"
-          grep -q '^100755 gradlew' <<<"$mode" || {
-            echo '::error::gradlew lost its executable bit (expected 100755); fix with: git update-index --chmod=+x gradlew'
+          printf '%s\n' "$mode" | awk '
+            {
+              seen = 1
+              ok = 1
+              n = split($0, f, "\t")
+              if (n != 2 || f[1] !~ /^100755 [0-9a-f]{40} 0$/ || f[2] != "gradlew") ok = 0
+            }
+            END { if (!seen || !ok) exit 1 }' || {
+            echo '::error::gradlew lost its executable bit (expected a tracked entry "100755 <sha> 0<TAB>gradlew" from git ls-files -s); fix with: git update-index --chmod=+x gradlew'
             exit 1
           }
 
@@ -50,19 +62,57 @@ jobs:
       - name: Provision Android SDK in-job (no runner state relied on)
         # sdkmanager is NOT preinstalled on hosted runners: fetch the
         # command-line tools ourselves, then install only the components this
-        # project pins (platform-tools, android-37, build-tools 36.0.0).
+        # project pins (platform-tools, android-37.0, build-tools 36.0.0).
         shell: bash
         env:
           ANDROID_HOME: ${{ runner.temp }}/android-sdk
         run: |
           set -euo pipefail
-          toolsUrl="https://dl.google.com/android/repository/commandlinetools-linux-13114788-update.zip"
+          # The official current Linux commandlinetools archive (published on
+          # developer.android.com/studio?pkg=tools, SHA-256 as published on
+          # that page). The old -13114788-update.zip filename returns HTTP 404
+          # (hosted PR run 36292331819, downloaded with -f so the bogus HTML
+          # was rejected before unzip itself failed).
+          toolsUrl="https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip"
           curl -fsSL -A "COLS-CI" -o "$RUNNER_TEMP/cmdline-tools.zip" "$toolsUrl"
           [ -s "$RUNNER_TEMP/cmdline-tools.zip" ] || { echo '::error::cmdline-tools download failed'; exit 1; }
+          # Integrity check against the SHA-256 published on the same official
+          # download page; blank output on failure so a parse error means fail.
+          echo "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583  ${RUNNER_TEMP}/cmdline-tools.zip" \
+            | (cd / && sha256sum -c -)
+          # unzip does not create intermediate directories: hosted PR run
+          # 36292663587 failed with "cannot create extraction directory"
+          # because $ANDROID_HOME/cmdline-tools did not exist yet.
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
           unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$ANDROID_HOME/cmdline-tools"
+          # Producer `yes` gets SIGPIPE (status 141) as soon as sdkmanager
+          # closes stdin after consuming the licenses — hosted PR run
+          # 36293077520 failed exactly there: `yes: standard output: Broken
+          # pipe`, exit 1 under `set -euo pipefail`, while sdkmanager itself
+          # had already succeeded (its deprecation warning proves it ran).
+          # Relax pipefail AND errexit ONLY around this one pipeline so the
+          # producer's SIGPIPE cannot abort a successful sdkmanager run, and
+          # capture sdkmanager's OWN status from PIPESTATUS[1] — not a
+          # blanket `|| true`, which would hide a real sdkmanager failure.
+          # sdkmanager's nonzero status still fails the step: the explicit
+          # check below re-exits with it (annotated) after pipefail/errexit
+          # are restored.
+          set +o pipefail
+          set +e
           yes | "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" --licenses > /dev/null
+          licenses_status="${PIPESTATUS[1]}"
+          set -e
+          set -o pipefail
+          echo "sdkmanager --licenses exit: $licenses_status"
+          if [ "$licenses_status" -ne 0 ]; then
+            echo "::error::sdkmanager --licenses failed with status $licenses_status (producer SIGPIPE excluded)"
+            exit "$licenses_status"
+          fi
+          # Android 37's stable package is minor-versioned (android-37.0); the
+          # literal "platforms;android-37" never existed in the repository
+          # (sdkmanager evidence from hosted run 36292331819).
           "$ANDROID_HOME/cmdline-tools/cmdline-tools/bin/sdkmanager" \
-            "platform-tools" "platforms;android-37" "build-tools;36.0.0" > /dev/null
+            "platform-tools" "platforms;android-37.0" "build-tools;36.0.0" > /dev/null
 
       - name: Spotless/ktlint check (cheapest gate — fails first)
         run: ./gradlew spotlessCheck
